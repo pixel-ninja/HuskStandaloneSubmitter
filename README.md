@@ -10,6 +10,7 @@ Features:
   <li> - Set Renderer (Karma CPU or XPU)</li>
   <li> - Set Chunk size</li>
   <li> - Add extra husk arguments</li>
+  <li> - Supports GPU Affinity</li>
 
 </ul>
 
