@@ -5,8 +5,12 @@ Submitter script for Deadline to allow direct submission of USD files to Husk.
 Features:
 </H2>
 <ul>
-  <li> - Sequence Renders </li>
-  <li> - Render Increments</li>
+  <li> - Submit multiple USD files</li>
+  <li> - Set Frame Ranges</li>
+  <li> - Set Renderer (Karma CPU or XPU)</li>
+  <li> - Set Chunk size</li>
+  <li> - Add extra husk arguments</li>
+
 </ul>
 
 <H2>
@@ -35,6 +39,6 @@ HuskStandalone (DIR)
 DeadlineRepository \custom\plugins\HuskStandalone
 
 <H3>
-Developed for University of Hertfordshire - Digital Animation 3D & VFX Degree
+Forked and based on from David Tree's Husk Submitter
 </H3>
-https://www.herts.ac.uk/courses/undergraduate/ba-hons-3d-animation-and-visual-effects
+https://github.com/DavidTree/HuskStandaloneSubmitter
