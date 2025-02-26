@@ -186,7 +186,7 @@ def SubmitButtonPressed():
         # Create plugin info file.
         pluginInfoFilename = Path.Combine( GetDeadlineTempPath(), "USD_plugin_info.job" )
         writer = StreamWriter( pluginInfoFilename, False, Encoding.Unicode )
-        writer.WriteLine( "SceneFile={}".format(usdFile))
+        writer.WriteLine( "SceneFile=\"{}\"".format(usdFile))
         writer.WriteLine( "Renderer={}".format(renderer))
         writer.WriteLine( "LogLevel={}".format(logLevel))
         writer.WriteLine( "ExtraArgs={}".format(extraArgs))
