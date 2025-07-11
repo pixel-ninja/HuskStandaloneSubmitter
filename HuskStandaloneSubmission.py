@@ -144,7 +144,7 @@ def SubmitButtonPressed():
     usdFiles = usdFilesString.split(';')
 
     # Ensure valid framerange
-    if not scriptDialog.GetValue("EndFrame") > scriptDialog.GetValue("StartFrame"):
+    if not scriptDialog.GetValue("EndFrame") >= scriptDialog.GetValue("StartFrame"):
         scriptDialog.ShowMessageBox( "End Frame must be higher than Start Frame", "Error" )
         return
 
@@ -166,6 +166,7 @@ def SubmitButtonPressed():
     extraArgs = scriptDialog.GetValue( "ExtraArgs" ).replace("\n", " ").replace("\r", " ").replace(";", "")
 
     # Iterate through files and submit each USD
+    results = ''
     for usdFile, jobName in zip(usdFiles, jobNames):
         #is file existing
         if not os.path.exists(usdFile):
@@ -199,5 +200,7 @@ def SubmitButtonPressed():
         arguments.Add( pluginInfoFilename )
 
         # Now submit the job.
-        results = ClientUtils.ExecuteCommandAndGetOutput( arguments )
-        scriptDialog.ShowMessageBox( results, "Submission Results: " + jobName )
+        results += '\n' + ClientUtils.ExecuteCommandAndGetOutput( arguments )
+    
+    
+    scriptDialog.ShowMessageBox( results, "Submission Results" )
