@@ -1,38 +1,25 @@
 [SceneFile]
-Type=filename
-Label=Scene Filename
-Category=Scene File
-Index=0
-Description=The scene filename as it exists on the network
-Required=true
-DisableIfBlank=true
+Category=Submission
+CategoryOrder=0
+Type=Filename
+Label=USD File Path
+Description=The USD file to be rendered by Husk.
+Required=False
 
-[OutputFile]
-Type=filenameSave
-Label=Output
-Category=Rendering Options
-Index=0
-Description=The output filename path
-Required=false
-DisableIfBlank=true
+[--renderer]
+Category=Rendering
+Type=Enum
+Label=Renderer
+Values=BRAY_HdKarmaXPU;BRAY_HdKarma
+DefaultValue=BRAY_HdKarmaXPU
+Description=Render using an alternate Hydra client.
 
-[Threads]
-Type=integer
+[--verbose]
+Category=Rendering
+Type=Integer
+Label=Verbosity
 Minimum=0
-Maximum=64
-Label=Threads
-Category=Rendering Options
-Index=1
-Description=The number of rendering threads (0 for system processor count)
-Required=false
-DisableIfBlank=true
-
-[Build]
-Type=enum
-Values=None;32bit;64bit
-Label=Build To Force
-Category=Rendering Options
-Index=2
-Description="for USD we are unsure whether we need this?"
-Required=false
-DisableIfBlank=true
+Maximum=9
+DefaultValue=0
+Description=Print more or less information while rendering.
+Required=True

@@ -1,123 +1,122 @@
 #!/usr/bin/env python3
+import os
 
 from System import *
 from System.Diagnostics import *
 from System.IO import *
 
-import os
-
 from Deadline.Plugins import *
 from Deadline.Scripting import *
 
-from pathlib import Path
 
 def GetDeadlinePlugin():
-    return HuskStandalone()
+	return HuskStandalone()
+
 
 def CleanupDeadlinePlugin(deadlinePlugin):
-    deadlinePlugin.Cleanup()
+	deadlinePlugin.Cleanup()
+
 
 class HuskStandalone(DeadlinePlugin):
-    # functions inside a class must be indented in python - DT
-    def __init__( self ):
-        import sys
-        if sys.version_info.major == 3:
-            super().__init__()
+	def __init__( self ):
+		import sys
+		if sys.version_info.major == 3:
+			super().__init__()
 
-        self.InitializeProcessCallback += self.InitializeProcess
-        self.RenderExecutableCallback += self.RenderExecutable # get the renderExecutable Location
-        self.RenderArgumentCallback += self.RenderArgument # get the arguments to go after the EXE
+		self.InitializeProcessCallback += self.InitializeProcess
+		self.RenderExecutableCallback += self.RenderExecutable # get the renderExecutable Location
+		self.RenderArgumentCallback += self.RenderArgument # get the arguments to go after the EXE
 
 
-    def Cleanup( self ):
-        del self.InitializeProcessCallback
-        del self.RenderExecutableCallback
-        del self.RenderArgumentCallback
+	def Cleanup( self ):
+		del self.InitializeProcessCallback
+		del self.RenderExecutableCallback
+		del self.RenderArgumentCallback
 
-    def InitializeProcess( self ):
-        self.SingleFramesOnly=False
-        self.StdoutHandling=True
-        self.PopupHandling=False
 
-        self.AddStdoutHandlerCallback("USD ERROR(.*)").HandleCallback += self.HandleStdoutError # detect this error
-        self.AddStdoutHandlerCallback( r"ALF_PROGRESS ([0-9]+(?=%))" ).HandleCallback += self.HandleStdoutProgress
+	def InitializeProcess( self ):
+		self.SingleFramesOnly=False
+		self.StdoutHandling=True
+		self.PopupHandling=False
 
-    # get path to the executable
-    def RenderExecutable(self):
-        #if we know submitter's Hou version we could eventualy use it
-        version = self.GetPluginInfoEntryWithDefault( "Version", "" )
-        pathList = self.GetConfigEntry("USD_RenderExecutable").replace("XX.X.XXX", version)
-        executableFound = FileUtils.SearchFileList(pathList)
-        if version == "" or not executableFound:       
-            self.LogInfo("Failed to find executable:\nconfig:{}\nVersion:{}\n".format(pathList, version))
-        return executableFound
+		self.AddStdoutHandlerCallback('USD ERROR(.*)').HandleCallback += self.HandleStdoutError # detect this error
+		self.AddStdoutHandlerCallback( r'ALF_PROGRESS ([0-9]+(?=%))' ).HandleCallback += self.HandleStdoutProgress
 
-    # get the settings that go after the filename in the render command, 3Delight only has simple options.
-    def RenderArgument( self ):
 
-        # construct fileName
-        #this will only support 1 frame per task
+	def RenderExecutable(self):
+		# get path to the executable
+		#if we know submitter's Hou version we could eventualy use it
+		version = self.GetPluginInfoEntryWithDefault( 'Version', '' )
+		path_list = self.GetConfigEntry('USD_RenderExecutable').replace('XX.X.XXX', version)
+		executable_path = FileUtils.SearchFileList(path_list)
+		if version == '' or not executable_path:
+			self.LogInfo('Failed to find executable:\nconfig:{}\nVersion:{}\n'.format(path_list, version))
+		return executable_path
 
-        usdFile = self.GetPluginInfoEntry("SceneFile")
-        usdFile = RepositoryUtils.CheckPathMapping( usdFile )
-        usdFile = usdFile.replace( "\\", "/" )
 
-        usdPaddingLength = FrameUtils.GetPaddingSizeFromFilename( usdFile )
+	def RenderArgument( self ):
+		'''
+		Construct argument string to pass to Husk.
+		'''
+		usd_file_path = self.GetPluginInfoEntry('SceneFile')
+		usd_file_path = RepositoryUtils.CheckPathMapping( usd_file_path )
+		usd_file_path = usd_file_path.replace( '\\', '/' )
 
-        frame = self.GetStartFrame()
-        frame_count = self.GetEndFrame() - frame + 1
+		frame = self.GetStartFrame()
+		frame_count = self.GetEndFrame() - frame + 1
 
-        argument = ""
-        argument += usdFile + " "
+		argument = ''
+		argument += f'--usd-input "{usd_file_path}"'
+		argument += f' --frame {frame}'
+		argument += f' --frame-count {frame_count}'
+		argument += f' --make-output-path'
+		for arg_name in self.GetPluginInfoEntry('ArgumentList').split(';'):
+			value = self.GetPluginInfoEntry(arg_name)
+			if value == 'False':
+				continue
+			elif value == 'True':
+				argument += f' {arg_name}'
+			else:
+				argument += f' {arg_name} {value}'
 
-        argument += "--verbose a{} ".format(self.GetPluginInfoEntry("LogLevel"))  # alfred style output and full verbosity
-        argument += "--frame {} ".format(frame)
-        argument += "--frame-count {} ".format(frame_count)
-        argument += "--make-output-path "
-        argument += self.GetPluginInfoEntry("ExtraArgs").replace("\n", " ") + " "
+			if arg_name == '--verbose':
+				argument += 'a'  # Required for progress handling
 
-        #renderer handled in job file.
-        # outputPath = self.GetPluginInfoEntry("OutputPath")
-        # outputPath = RepositoryUtils.CheckPathMapping( outputPath )
-        #argument += "-o {0}".format(outputPath)
-        #argument += " --make-output-path" + " "
+		self.LogInfo(f"Rendering USD file: {usd_file_path}")
 
-        renderer = self.GetPluginInfoEntryWithDefault("Renderer", None)
-        if renderer is not None:
-            argument += "--renderer {} ".format(renderer)
+		# Do karma GPU Environment vars
+		self.KarmaGPUAffinity()
 
-        self.LogInfo( "Rendering USD file: " + usdFile )
+		return argument
 
-        # Do karma GPU Environment vars
-        self.kmaGPUAffinity()
 
-        return argument
+	def HandleStdoutProgress(self):
+		# just incase we want to implement progress at some point
+		self.SetStatusMessage(self.GetRegexMatch(0))
+		self.SetProgress(float(self.GetRegexMatch(1)))
 
-    # just incase we want to implement progress at some point
-    def HandleStdoutProgress(self):
-        self.SetStatusMessage(self.GetRegexMatch(0))
-        self.SetProgress(float(self.GetRegexMatch(1)))
 
-    # what to do when an error is detected.
-    def HandleStdoutError(self):
-        self.FailRender(self.GetRegexMatch(0))
+	def HandleStdoutError(self):
+		# what to do when an error is detected.
+		self.FailRender(self.GetRegexMatch(0))
 
-    def kmaGPUAffinity(self):
-        # Set which GPUs to use
-        # More accurately disable which GPUs not to use
-        # Assumes max 4 GPUS
-        MAX_GPUS = 4
-        VAR_STRING_TEMPLATE = "KARMA_XPU_DISABLE_DEVICE_{}"
 
-        if self.OverrideGpuAffinity():
-            selectedGPUs = list(self.GpuAffinity())
-            print("SELECTED GPUS", selectedGPUs)
+	def KarmaGPUAffinity(self):
+		'''
+		Set which GPUs to use using Karma Environment Variables
+		More accurately disable which GPUs not to use
+		Assumes max 4 GPUS
+		'''
+		MAX_GPUS = 4
+		VAR_STRING_TEMPLATE = "KARMA_XPU_DISABLE_DEVICE_{}"
 
-            for gpu in range(MAX_GPUS):
-                if gpu in selectedGPUs:
-                    continue
+		if self.OverrideGpuAffinity():
+			selected_GPUs = list(self.GpuAffinity())
+			print("SELECTED GPUS", selected_GPUs)
 
-                # The set process function doesn't work for some reason
-                # self.SetProcessEnvironmentVariable(VAR_STRING_TEMPLATE.format(gpu) , "1")
-                os.environ[VAR_STRING_TEMPLATE.format(gpu)] = "1"
+			for gpu in range(MAX_GPUS):
+				if gpu in selected_GPUs:
+					continue
+
+				os.environ[VAR_STRING_TEMPLATE.format(gpu)] = "1"
 
