@@ -183,6 +183,7 @@ def toggle_enabled(dialog: DeadlineScriptDialog) -> None:
 			dialog.SetEnabled(f'{control_name}_label', enabled)
 
 # Define UI
+WINDOW_TITLE = 'Deadline Husk Submitter'
 MAX_COLUMNS = 6
 CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed group
 	'Submission_': [
@@ -291,7 +292,7 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 
 	# Iterate through files and submit each USD
 	results = {'success': {}, 'fail': {}}
-	for usd_file_path in usd_file_paths:
+	for job_index, usd_file_path in enumerate(usd_file_paths):
 		if not os.path.exists(usd_file_path):
 			dialog.ShowMessageBox( "USD file doesn't exist!\n" + usd_file_path, 'Error' )
 			continue
@@ -350,17 +351,23 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 		job_arguments.Add( job_info_filename )
 		job_arguments.Add( plugin_info_filename )
 
+
+		# Progress in titlebar
+		dialog.SetTitle(f'{WINDOW_TITLE} - Submitting Job {job_index + 1}')
+
 		# Now submit the job.
 		result = ClientUtils.ExecuteCommandAndGetOutput( job_arguments )
 		results['success' if 'Result=Success' in result else 'fail'][job_name] = result
 
 	# Display results/errors
+	dialog.SetTitle(f'{WINDOW_TITLE} - Submission Complete')
 	dialog.ShowMessageBox( format_results_message(results), "Submission Results" )
+	dialog.SetTitle(WINDOW_TITLE)
 
 
 def submission_dialog(*args) -> DeadlineScriptDialog:
 	dialog = DeadlineScriptDialog()
-	dialog.SetTitle('Deadline Husk Submitter')
+	dialog.SetTitle(WINDOW_TITLE)
 	dialog.SetIcon(dialog.GetIcon('HuskStandalone'))
 
 	for group, control_rows in CONTROLS.items():
@@ -455,5 +462,5 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 
 def __main__(*args):
 	dialog = submission_dialog(*args)
-	dialog.ShowDialog(modal=True)
+	dialog.ShowDialog(modal=False)
 
