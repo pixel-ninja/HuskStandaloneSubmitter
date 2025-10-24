@@ -480,10 +480,12 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 
 	return dialog
 
-
 def __main__(*args):
-	modal = bool(*args)  # Allows submission from terminal without window auto closing
+	modal = '--modal' in args  # Allows submission from terminal without window auto closing
 
-	dialog = submission_dialog(*args)
+	# filter out non-paths from args
+	file_paths = [x for x in args if os.path.exists(x)]
+
+	dialog = submission_dialog(*file_paths)
 	dialog.ShowDialog(modal=modal)
 
