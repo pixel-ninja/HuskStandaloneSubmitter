@@ -131,7 +131,7 @@ def get_render_info(path: str) -> dict[str, list[str] | dict[str, list[str]]]:
 				accum_path += f'/{name}'
 			elif current_depth <= accum_depth:
 				diff = accum_depth - current_depth
-				for i in range(diff + 1):
+				for _ in range(diff + 1):
 					accum_path, _ = os.path.split(accum_path) 
 				accum_depth -= diff
 				accum_path += f'/{name}'
@@ -169,17 +169,10 @@ def toggle_enabled(dialog: DeadlineScriptDialog) -> None:
 				if control.type is not ControlType.range2:
 					dialog.SetEnabled(control.name, enabled)
 				else:
-					for i, (label, value) in enumerate(control.value):
+					for i, (label, _) in enumerate(control.value):
 						if label:
 							dialog.SetEnabled(f'{control.name}_{i}_label', enabled)
 						dialog.SetEnabled(f'{control.name}_{i}', enabled)
-
-	return
-	for override_name, control_names in TOGGLES.items():
-		enabled = dialog.GetValue(override_name)
-		for control_name in control_names:
-			dialog.SetEnabled(control_name, enabled)
-			dialog.SetEnabled(f'{control_name}_label', enabled)
 
 
 def files_selected(dialog: DeadlineScriptDialog):
@@ -410,8 +403,7 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 		dialog.AddGrid()
 
 		for control_row in control_rows:
-			num_controls = len(control_row)
-			for i, control in enumerate(control_row):
+			for _, control in enumerate(control_row):
 				if control.pre_space:
 					dialog.AddHorizontalSpacerToGrid('', row, column)
 					column += 1
