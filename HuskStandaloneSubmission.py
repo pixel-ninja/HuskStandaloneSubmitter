@@ -1,5 +1,4 @@
 import os
-import sys
 import subprocess
 import re
 from enum import Enum
@@ -182,12 +181,38 @@ def toggle_enabled(dialog: DeadlineScriptDialog) -> None:
 			dialog.SetEnabled(control_name, enabled)
 			dialog.SetEnabled(f'{control_name}_label', enabled)
 
+
+def files_selected(dialog: DeadlineScriptDialog):
+	'''
+	Sets the Batch Name to the shortest common prefix of input files
+	when multiple files are selected.
+
+	eg. Scene_v005.FG.usd;Scene_v005.BG.usd -> Scene_v005
+	'''
+	file_paths_string = dialog.GetValue('file_paths_control')
+	if not file_paths_string:
+		return
+
+	file_paths = file_paths_string.split(';')
+
+	# No need for batch name when submitting single file
+	if len(file_paths) == 1:
+		dialog.SetValue('batch_control', '')
+		return
+	
+	common_prefix = os.path.commonprefix(file_paths)
+	batch_name = os.path.basename(os.path.splitext(common_prefix)[0])
+	if common_prefix:
+		dialog.SetValue('batch_control', batch_name)
+
+
 # Define UI
 WINDOW_TITLE = 'Deadline Husk Submitter'
 MAX_COLUMNS = 6
 CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed group
 	'Submission_': [
-		[Control('file_paths_control', 'USD File/s', ControlType.multifile, ['', 'USD Files (*.usd);;USDA Files (*.usda);;USDC Files(*.usdc);;USDZ Files(*.usdz)'])],
+		[Control('file_paths_control', 'USD File/s', ControlType.multifile, ['', 'USD Files (*.usd);;USDA Files (*.usda);;USDC Files(*.usdc);;USDZ Files(*.usdz)'], callback=files_selected)],
+		[Control('batch_control', 'Batch Name', ControlType.text, [''])],
 		[Control('comment_control', 'Comment', ControlType.text, [''])],
 		[Control('chunk_control', 'Frames Per Task', ControlType.range, [5, 1, 1000, 0, 1])],
 		[Control('framerange_control', 'Frame Range', ControlType.range2, [('Start', [1001, -65535, 65535, 0, 1]), ('End', [1250, -65535, 65535, 0, 1])], override=False)],
@@ -267,6 +292,7 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 	# Get dialog values
 	override_frames = dialog.GetValue('override_framerange_control')
 	frame_list = f"{dialog.GetValue('framerange_control_0')}-{dialog.GetValue('framerange_control_1')}"
+	batch_name = dialog.GetValue('batch_control')
 	comment = dialog.GetValue('comment_control')
 	chunk_size = dialog.GetValue('chunk_control')
 	arguments = {}
@@ -330,6 +356,8 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 		writer = StreamWriter( job_info_filename, False, Encoding.Unicode )
 		writer.WriteLine( 'Plugin=HuskStandalone' )
 		writer.WriteLine( f'Name={job_name}')
+		if batch_name:
+			writer.WriteLine( f'BatchName={batch_name}')
 		writer.WriteLine( f'Comment={comment}')
 		writer.WriteLine( f'Frames={frame_list}')
 		writer.WriteLine( f'ChunkSize={chunk_size}')
@@ -455,12 +483,15 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 	dialog.EndGrid()
 
 	toggle_enabled(dialog)
+	files_selected(dialog)
 	dialog.SetValue('file_paths_control', ';'.join(args))
 
 	return dialog
 
 
 def __main__(*args):
+	modal = bool(*args)  # Allows submission from terminal without window auto closing
+
 	dialog = submission_dialog(*args)
-	dialog.ShowDialog(modal=False)
+	dialog.ShowDialog(modal=modal)
 
