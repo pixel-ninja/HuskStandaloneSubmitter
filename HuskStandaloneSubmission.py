@@ -128,7 +128,7 @@ def generate_options_file() -> None:
 	'''
 	plugin_directory = RepositoryUtils.GetPluginDirectory('HuskStandalone')
 	options_path = Path.Combine( plugin_directory, 'HuskStandalone.options' )
-	writer = StreamWriter( options_path, False, Encoding.Unicode )
+	writer = StreamWriter( options_path, False, Encoding.UTF8 )
 
 	index = 0
 	for category_index, (group, controls) in enumerate(CONTROLS.items()):

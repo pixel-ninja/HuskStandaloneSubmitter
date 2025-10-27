@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 import os
 
-from System import *
-from System.Diagnostics import *
-from System.IO import *
-
-from Deadline.Plugins import *
-from Deadline.Scripting import *
+from Deadline.Plugins import DeadlinePlugin
+from Deadline.Scripting import FileUtils, RepositoryUtils
 
 
 def GetDeadlinePlugin():
@@ -39,7 +35,7 @@ class HuskStandalone(DeadlinePlugin):
 		self.StdoutHandling=True
 		self.PopupHandling=False
 
-		self.AddStdoutHandlerCallback('USD ERROR(.*)').HandleCallback += self.HandleStdoutError # detect this error
+		self.AddStdoutHandlerCallback('USD ERROR(.*)').HandleCallback += self.HandleStdoutError
 		self.AddStdoutHandlerCallback( r'ALF_PROGRESS ([0-9]+(?=%))' ).HandleCallback += self.HandleStdoutProgress
 
 
@@ -103,13 +99,11 @@ class HuskStandalone(DeadlinePlugin):
 
 
 	def HandleStdoutProgress(self):
-		# just incase we want to implement progress at some point
 		self.SetStatusMessage(self.GetRegexMatch(0))
 		self.SetProgress(float(self.GetRegexMatch(1)))
 
 
 	def HandleStdoutError(self):
-		# what to do when an error is detected.
 		self.FailRender(self.GetRegexMatch(0))
 
 
