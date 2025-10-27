@@ -23,6 +23,8 @@ class ControlType(Enum):
 	range2 = 'RangeControl2'
 	button = 'ButtonControl'
 	combo = 'ComboControl'
+	multilist = 'MultiSelectListControl'
+
 
 @dataclass
 class Control:
@@ -54,6 +56,68 @@ def get_usdcat() -> str:
 		raise Exception("Houdini usdcat binary not found.")
 	
 	return usdcat
+
+
+def files_selected(dialog: DeadlineScriptDialog):
+	'''
+	Sets the Batch Name to the shortest common prefix of input files
+	when multiple files are selected.
+
+	eg. Scene_v005.FG.usd;Scene_v005.BG.usd -> Scene_v005
+	'''
+	file_paths_string = dialog.GetValue('file_paths_control')
+	if not file_paths_string:
+		return
+
+	file_paths = file_paths_string.split(';')
+
+	# No need for batch name when submitting single file
+	if len(file_paths) == 1:
+		dialog.SetValue('batch_control', '')
+		return
+	
+	common_prefix = os.path.commonprefix(file_paths)
+	batch_name = os.path.basename(os.path.splitext(common_prefix)[0])
+	if common_prefix:
+		dialog.SetValue('batch_control', batch_name)
+
+
+# Define UI
+USDCAT = get_usdcat()
+WINDOW_TITLE = 'Deadline Husk Submitter'
+MAX_COLUMNS = 6
+CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed group
+	'Submission_': [
+		[Control('file_paths_control', 'USD File/s', ControlType.multifile, ['', 'USD Files (*.usd);;USDA Files (*.usda);;USDC Files(*.usdc);;USDZ Files(*.usdz)'], callback=files_selected)],
+		[Control('batch_control', 'Batch Name', ControlType.text, [''])],
+		[Control('comment_control', 'Comment', ControlType.text, [''])],
+		[Control('chunk_control', 'Frames Per Task', ControlType.range, [5, 1, 1000, 0, 1])],
+		[Control('framerange_control', 'Frame Range', ControlType.range2, [('Start', [1001, -65535, 65535, 0, 1]), ('End', [1250, -65535, 65535, 0, 1])], override=False)],
+	],
+
+	'Rendering-': [
+		[Control('--renderer', 'Renderer', ControlType.combo, ['', ['BRAY_HdKarmaXPU', 'BRAY_HdKarma']])],
+		[Control('--pixel-samples', 'Pixel Samples', ControlType.range, [128, 1, 65535, 0, 1], override=False)],
+		[Control('--pass', 'Pass Prim/s', ControlType.text, [''], override=False)],
+		[Control('--settings', 'Settings Prim/s', ControlType.text, [''], override=False)],
+		[Control('--slap-comp', 'Slap Comp', ControlType.text, [''], override=False)],
+		[Control('--tile-count', 'Auto Tile', ControlType.range2, [('x', [4, 1, 65535, 0, 1]), ('y', [4, 1, 65535, 0, 1])], override=False)],
+		[Control('--verbose', 'Logging Verbosity', ControlType.range, [0, 0, 9, 0, 1], override=False)],
+	],
+
+	'RenderSettingsOverrides-': [
+		[Control('--res', 'Resolution', ControlType.range2, [('x', [1920, 0, 65535, 0, 1]), ('y', [1080, 0, 65535, 0, 1])], override=False)],
+		[Control('--res-scale', 'Resolution Scale', ControlType.range, [100, 0, 5000, 0, 1], override=False)],
+		[Control('--camera', 'Camera', ControlType.text, [''], override=False)],
+	],
+
+	'USD-': [
+			[Control('--headlight', 'Headlight', ControlType.combo, ['', ['None', 'Distant', 'Dome']], override=True)],
+			[Control('--disable-scene-materials', '', ControlType.checkbox, [False, 'Disable Scene Materials'])],
+			[Control('--disable-scene-lights', '', ControlType.checkbox, [False, 'Disable Scene Lights'])],
+			[Control('--disable-motionblur', '', ControlType.checkbox, [False, 'Disable Motion Blur'])],
+	],
+}
 
 
 def get_usd_metadata(path: str) -> dict[str, str]:
@@ -175,73 +239,6 @@ def toggle_enabled(dialog: DeadlineScriptDialog) -> None:
 						dialog.SetEnabled(f'{control.name}_{i}', enabled)
 
 
-def files_selected(dialog: DeadlineScriptDialog):
-	'''
-	Sets the Batch Name to the shortest common prefix of input files
-	when multiple files are selected.
-
-	eg. Scene_v005.FG.usd;Scene_v005.BG.usd -> Scene_v005
-	'''
-	file_paths_string = dialog.GetValue('file_paths_control')
-	if not file_paths_string:
-		return
-
-	file_paths = file_paths_string.split(';')
-
-	# No need for batch name when submitting single file
-	if len(file_paths) == 1:
-		dialog.SetValue('batch_control', '')
-		return
-	
-	common_prefix = os.path.commonprefix(file_paths)
-	batch_name = os.path.basename(os.path.splitext(common_prefix)[0])
-	if common_prefix:
-		dialog.SetValue('batch_control', batch_name)
-
-
-# Define UI
-WINDOW_TITLE = 'Deadline Husk Submitter'
-MAX_COLUMNS = 6
-CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed group
-	'Submission_': [
-		[Control('file_paths_control', 'USD File/s', ControlType.multifile, ['', 'USD Files (*.usd);;USDA Files (*.usda);;USDC Files(*.usdc);;USDZ Files(*.usdz)'], callback=files_selected)],
-		[Control('batch_control', 'Batch Name', ControlType.text, [''])],
-		[Control('comment_control', 'Comment', ControlType.text, [''])],
-		[Control('chunk_control', 'Frames Per Task', ControlType.range, [5, 1, 1000, 0, 1])],
-		[Control('framerange_control', 'Frame Range', ControlType.range2, [('Start', [1001, -65535, 65535, 0, 1]), ('End', [1250, -65535, 65535, 0, 1])], override=False)],
-	],
-
-	'Rendering-': [
-		[Control('--renderer', 'Renderer', ControlType.combo, ['', ['BRAY_HdKarmaXPU', 'BRAY_HdKarma']])],
-		[Control('--pixel-samples', 'Pixel Samples', ControlType.range, [128, 1, 65535, 0, 1], override=False)],
-		[Control('--pass', 'Pass Prim/s', ControlType.text, [''], override=False)],
-		[Control('--settings', 'Settings Prim/s', ControlType.text, [''], override=False)],
-		[Control('--slap-comp', 'Slap Comp', ControlType.text, [''], override=False)],
-		[Control('--tile-count', 'Auto Tile', ControlType.range2, [('x', [4, 1, 65535, 0, 1]), ('y', [4, 1, 65535, 0, 1])], override=False)],
-		[Control('--verbose', 'Logging Verbosity', ControlType.range, [0, 0, 9, 0, 1], override=False)],
-	],
-
-	'RenderSettingsOverrides-': [
-		[Control('--res', 'Resolution', ControlType.range2, [('x', [1920, 0, 65535, 0, 1]), ('y', [1080, 0, 65535, 0, 1])], override=False)],
-		[Control('--res-scale', 'Resolution Scale', ControlType.range, [100, 0, 5000, 0, 1], override=False)],
-		[Control('--camera', 'Camera', ControlType.text, [''], override=False)],
-	],
-
-	'USD-': [
-			[Control('--headlight', 'Headlight', ControlType.combo, ['', ['None', 'Distant', 'Dome']], override=True)],
-			[Control('--disable-scene-materials', '', ControlType.checkbox, [False, 'Disable Scene Materials'])],
-			[Control('--disable-scene-lights', '', ControlType.checkbox, [False, 'Disable Scene Lights'])],
-			[Control('--disable-motionblur', '', ControlType.checkbox, [False, 'Disable Motion Blur'])],
-	],
-}
-
-TOGGLES = {
-	'override_frames_control': ['start_control', 'end_control'],
-}
-
-USDCAT = get_usdcat()
-
-
 def format_results_message(results: dict[str, dict[str, str]]) -> str:
 	'''
 	Take the stdout results of the job submissions and format them nicely for display.
@@ -288,6 +285,7 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 	batch_name = dialog.GetValue('batch_control')
 	comment = dialog.GetValue('comment_control')
 	chunk_size = dialog.GetValue('chunk_control')
+
 	arguments = {}
 
 	# Get Argument Values
@@ -296,9 +294,11 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 			for control in control_row:
 				if not control.name.startswith('--'):
 					continue
-				if control.override is not None and not dialog.GetValue(f'override_{control.name}'):
-					continue
-				
+
+				if control.override is not None:
+					override_name = f'override_{control.name}'
+					arguments[override_name] = dialog.GetValue(override_name)
+
 				if control.type is ControlType.range2:
 					if control.name == '--tile-count':
 						arguments['--autotile'] = True
@@ -314,6 +314,7 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 	for job_index, usd_file_path in enumerate(usd_file_paths):
 		if not os.path.exists(usd_file_path):
 			dialog.ShowMessageBox( "USD file doesn't exist!\n" + usd_file_path, 'Error' )
+			results['fail'][os.path.basename(usd_file_path)] = "USD file doesn't exist"
 			continue
 
 		# Use frame range from usd file
@@ -361,7 +362,7 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 		# Create plugin info file.
 		plugin_info_filename = Path.Combine( GetDeadlineTempPath(), 'husk_plugin_info.job' )
 		writer = StreamWriter( plugin_info_filename, False, Encoding.Unicode )
-		writer.WriteLine( f'SceneFile={usd_file_path}')
+		arguments['--usd-input'] = usd_file_path
 		writer.WriteLine( f'ArgumentList={";".join(arguments.keys())}')
 		for argument, value in arguments.items():
 			writer.WriteLine( f'{argument}={value}' )
@@ -446,7 +447,7 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 							control_args = [f'{control.name}_{item_num}', control.type.value[:-1], *value, row, column, control.tooltip]
 							control_items.append(dialog.AddRangeControlToGrid(*control_args, **control_kwargs))
 							column += control_kwargs['colSpan']
-					case ControlType.combo:
+					case ControlType.combo | ControlType.multilist:
 						control_items.append(dialog.AddComboControlToGrid(*control_args, **control_kwargs))
 					case _:
 						control_items.append(dialog.AddControlToGrid(*control_args, **control_kwargs))
@@ -479,6 +480,7 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 	dialog.SetValue('file_paths_control', ';'.join(args))
 
 	return dialog
+
 
 def __main__(*args):
 	modal = '--modal' in args  # Allows submission from terminal without window auto closing

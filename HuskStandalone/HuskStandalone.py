@@ -58,7 +58,7 @@ class HuskStandalone(DeadlinePlugin):
 		'''
 		Construct argument string to pass to Husk.
 		'''
-		usd_file_path = self.GetPluginInfoEntry('SceneFile')
+		usd_file_path = self.GetPluginInfoEntry('--usd-input')
 		usd_file_path = RepositoryUtils.CheckPathMapping( usd_file_path )
 		usd_file_path = usd_file_path.replace( '\\', '/' )
 
@@ -71,6 +71,16 @@ class HuskStandalone(DeadlinePlugin):
 		argument += f' --frame-count {frame_count}'
 		argument += f' --make-output-path'
 		for arg_name in self.GetPluginInfoEntry('ArgumentList').split(';'):
+			if arg_name == '--usd-input':
+				continue
+
+			if arg_name.startswith('override'):
+				continue
+			
+			print(f'override_{arg_name}', self.GetBooleanPluginInfoEntryWithDefault(f'override_{arg_name}', True))
+			if not self.GetBooleanPluginInfoEntryWithDefault(f'override_{arg_name}', True):
+				continue
+
 			value = self.GetPluginInfoEntry(arg_name)
 			if value == 'False':
 				continue
