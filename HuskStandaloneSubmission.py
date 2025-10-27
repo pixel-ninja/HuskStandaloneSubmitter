@@ -3,7 +3,7 @@ import subprocess
 import re
 from enum import Enum
 from functools import partial
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from Deadline.Scripting import ClientUtils, RepositoryUtils, FileUtils, FrameUtils
@@ -36,6 +36,19 @@ class Control:
 	override: bool | None = None
 	pre_space: bool = False
 	callback: Optional[Callable[[DeadlineScriptDialog], None]] = None
+
+
+@dataclass
+class RenderInfo:
+	startTimeCode: int = 1
+	endTimeCode: int = 1
+	renderSettingsPrimPath: str = '/Render/rendersettings'
+	ProductName: list[str] = field(default_factory=list)
+	RenderVar: list[str] = field(default_factory=list)
+	RenderProduct: list[str] = field(default_factory=list)
+	RenderSettings: list[str] = field(default_factory=list)
+	RenderPass: list[str] = field(default_factory=list)
+	relationships: dict[str, list[str]] = field(default_factory=dict)
 
 
 def get_usdcat() -> str:
@@ -109,6 +122,7 @@ CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed gro
 		[Control('--res', 'Resolution', ControlType.range2, [('x', [1920, 0, 65535, 0, 1]), ('y', [1080, 0, 65535, 0, 1])], override=False)],
 		[Control('--res-scale', 'Resolution Scale', ControlType.range, [100, 0, 5000, 0, 1], override=False)],
 		[Control('--camera', 'Camera', ControlType.text, [''], override=False)],
+		[Control('--output', 'Output/s', ControlType.text, [''], override=False)],
 	],
 
 	'USD-': [
@@ -202,45 +216,37 @@ def generate_options_file() -> None:
 	writer.Close()
 
 
-
-
-def get_usd_metadata(path: str) -> dict[str, str]:
+def get_render_info(path: str) -> RenderInfo:
 	'''
-	Return the layer metadata of a usd file as a dictionary via usdcat.
-	Hacky parsing of usdcat output to avoid dealing with clashing Deadline/USD python versions.
-	'''
-	layer_metadata = {}
-	usdcat = subprocess.check_output([USDCAT, '--layerMetadata', path], text=True)
-	for line in usdcat.splitlines()[2:-2]:
-		key, value = line.lstrip().split(' = ')
-		layer_metadata[key] = value
-	
-	return layer_metadata
-
-
-def get_render_info(path: str) -> dict[str, list[str] | dict[str, list[str]]]:
-	'''
-	Returns a dictionary of representing all of the render prims and their relationships.
-	Hacky parsing of usdcat output to avoid dealing with clashing Deadline/USD python versions.
+	Returns a RenderInfo dataclass representing relevant layer metadata
+	and all of the render prims and their relationships.
+	Hacky parsing of usdcat output to avoid dealing with clashing
+	Deadline/USD python versions.
 	Only looks under /Render.
-	ProductName will always be the last element of the RenderProduct's relationship list
-	and will be the first found frame converted to printf format.
+	ProductName will always be the last element of the RenderProduct's
+	relationship list and will be the first found frame converted to printf format.
 	'''
-	result = {
-		'ProductName': [],
-		'RenderVar': [],
-		'RenderProduct': [],
-		'RenderSettings': [],
-		'RenderPass': [],
-		'Relationships': {}
-	}
-	
+	result = RenderInfo()
 	accum_path:str = ''
 	accum_depth:int = -1
 
 	usdcat = subprocess.check_output([USDCAT, '--flatten', '--mask', '/Render', path], text=True)
+	finished_metadata = False
 	resume = []
 	for line in usdcat.splitlines():
+		# Process metadate first
+		if not finished_metadata:
+			if line.strip() == ')':
+				finished_metadata = True
+				continue
+			elif ' = ' not in line:
+				continue
+			
+			key, value = line.lstrip().split(' = ')
+			if hasattr(result, key):
+				setattr(result, key, value.strip('"'))
+
+			continue
 		# Resume list
 		if resume:
 			if resume[1] in line:
@@ -259,9 +265,9 @@ def get_render_info(path: str) -> dict[str, list[str] | dict[str, list[str]]]:
 
 			if resume[1] == '}':
 				matched_path = FrameUtils.ReplaceFrameNumberWithPrintFPadding(matched_path)
-				result['ProductName'].append(matched_path)
+				result.ProductName.append(matched_path)
 
-			result['Relationships'][accum_path].append(matched_path)
+			result.relationships[accum_path].append(matched_path)
 
 			if resume[1] == '}':
 				resume[0] = 'skip'
@@ -271,7 +277,7 @@ def get_render_info(path: str) -> dict[str, list[str] | dict[str, list[str]]]:
 		match = re.search(r'def (?P<type>.+) "(?P<name>.+)"', line)
 		if match:
 			name = match.groupdict()['name']
-			type = match.groupdict()['type']
+			prim_type = match.groupdict()['type']
 
 			current_depth:int = (len(line) - len(line.lstrip())) // 4
 			if current_depth > accum_depth:
@@ -284,22 +290,22 @@ def get_render_info(path: str) -> dict[str, list[str] | dict[str, list[str]]]:
 				accum_depth -= diff
 				accum_path += f'/{name}'
 
-			if type in result.keys():
-				result[type].append(accum_path)
+			if hasattr(result, prim_type):
+				getattr(result, prim_type).append(accum_path)
 			continue
 
 		# Find Relationships
 		match = re.search(r'(?:rel|token) (?P<type>products|renderSource|orderedVars|productName\.timeSamples) = <?(?P<path>[^>]+)>?', line)
 		if match:
-			if accum_path not in result['Relationships']:
-				result['Relationships'][accum_path] = []
+			if accum_path not in result.relationships:
+				result.relationships[accum_path] = []
 
 			if match.groupdict()['path'] == '[':
 				resume = [r'<(.*)>', ']']
 			elif match.groupdict()['path'] == '{': 
 				resume = [r'\d+: "(.+)",', '}']
 			else:
-				result['Relationships'][accum_path].append(match.groupdict()['path'])
+				result.relationships[accum_path].append(match.groupdict()['path'])
 
 	return result
 
@@ -349,6 +355,33 @@ def format_results_message(results: dict[str, dict[str, str]]) -> str:
 	return result_output
 
 
+def determine_outputs(render_info: RenderInfo, pass_value: str, settings_value: str, output_value: str) -> dict[str, tuple[list[str], list[str]]]:
+	'''
+	Determines the appropriate values for settings and output for each pass
+	based on the values provided by looking into the usd file.
+	Pass > Settings > Product > ProductName
+	Render Pass drives Render Settings (via RenderSource attribute)
+	Render Settings drives Render Product
+	Render Product drives output/ProductNames
+	'''
+	result = {}
+	settings_prims = []  #TODO: proper pattern matching of rendersettings value
+	productnames = []
+
+	# Get default productname #TODO: Proper handling of productname based on RenderPass/Settings/Products
+	if render_info.renderSettingsPrimPath in render_info.RenderSettings:
+		settings_prims.append(render_info.renderSettingsPrimPath)
+
+	for render_settings_prim in settings_prims:
+		if render_settings_prim in render_info.relationships:
+			for render_product_prim in render_info.relationships[render_settings_prim]:
+				productname = render_info.relationships[render_product_prim][-1]
+				# Check element is a productname and not a RenderVar
+				if productname in render_info.ProductName:
+					productnames.append(productname)
+	return {'': (settings_prims, productnames)}  #TODO: Handle this properly
+
+
 def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 	usd_file_paths_string = dialog.GetValue('file_paths_control')
 	
@@ -390,7 +423,6 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 				else:
 					arguments[control.name] = dialog.GetValue(control.name)
 
-
 	# Iterate through files and submit each USD
 	results = {'success': {}, 'fail': {}}
 	for job_index, usd_file_path in enumerate(usd_file_paths):
@@ -399,69 +431,59 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 			results['fail'][os.path.basename(usd_file_path)] = "USD file doesn't exist"
 			continue
 
+		job_name = os.path.basename(usd_file_path)
+		render_info: RenderInfo = get_render_info(usd_file_path)
+
 		# Use frame range from usd file
 		if not override_frames:
-			layer_metadata = get_usd_metadata(usd_file_path)
-			frame_list = f"{layer_metadata['startTimeCode']}-{layer_metadata['endTimeCode']}"
+			frame_list = f"{render_info.startTimeCode}-{render_info.endTimeCode}"
 
-		# Get Outputs
-		#NOTE: This is a mess
-		#TODO: Extract into a separate function to at least hide it away
-		render_settings_prims = []
-		render_product_prims = []
-		productnames = []
-		if True:  #TODO: Proper conditional handling
-			render_info = get_render_info(usd_file_path)
-			# Get default productname #TODO: Proper handling of productname based on RenderPass/Settings/Products
-			default_render_settings_prim = '/Render/rendersettings' 
-			if default_render_settings_prim in render_info['RenderSettings']:
-				render_settings_prims.append(default_render_settings_prim)
-				for render_settings_prim in render_settings_prims:
-					if render_settings_prim in render_info['Relationships']:
-						for render_product_prim in render_info['Relationships'][render_settings_prim]:
-							render_product_prims.append(render_product_prim)
-							productname = render_info['Relationships'][render_product_prim][-1]
-							# Check element is a productname and not a RenderVar
-							if productname in render_info['ProductName']:
-								productnames.append(productname)
+		outputs = determine_outputs(
+				render_info,
+				dialog.GetValue('--pass'),  #TODO: Empty string if override is false
+				dialog.GetValue('--settings'),  #TODO: Empty string if override is false
+				dialog.GetValue('--output')  #TODO: Empty string if override is false
+			)
 
-		job_name = os.path.basename(usd_file_path)
+		for pass_prim, (settings_prims, productnames) in outputs.items():
+			job_name_suffix = ''
+			if pass_prim != '':
+				job_name_suffix = '_' + os.path.basename(pass_prim)
 
-		#Create Job file
-		job_info_filename = Path.Combine( GetDeadlineTempPath(), 'husk_job_info.job' )
-		writer = StreamWriter( job_info_filename, False, Encoding.Unicode )
-		writer.WriteLine( 'Plugin=HuskStandalone' )
-		writer.WriteLine( f'Name={job_name}')
-		if batch_name:
-			writer.WriteLine( f'BatchName={batch_name}')
-		writer.WriteLine( f'Comment={comment}')
-		writer.WriteLine( f'Frames={frame_list}')
-		writer.WriteLine( f'ChunkSize={chunk_size}')
-		for i, productname in enumerate(productnames):
-			writer.WriteLine( f'OutputFilename{i}={productname}' )
-		writer.Close()
+			#Create Job file
+			job_info_filename = Path.Combine( GetDeadlineTempPath(), 'husk_job_info.job' )
+			writer = StreamWriter( job_info_filename, False, Encoding.Unicode )
+			writer.WriteLine( 'Plugin=HuskStandalone' )
+			writer.WriteLine( f'Name={job_name + job_name_suffix}')
+			if batch_name:
+				writer.WriteLine( f'BatchName={batch_name}')
+			writer.WriteLine( f'Comment={comment}')
+			writer.WriteLine( f'Frames={frame_list}')
+			writer.WriteLine( f'ChunkSize={chunk_size}')
+			for i, productname in enumerate(productnames):
+				writer.WriteLine( f'OutputFilename{i}={productname}' )
+			writer.Close()
 
-		# Create plugin info file.
-		plugin_info_filename = Path.Combine( GetDeadlineTempPath(), 'husk_plugin_info.job' )
-		writer = StreamWriter( plugin_info_filename, False, Encoding.Unicode )
-		arguments['--usd-input'] = usd_file_path
-		writer.WriteLine( f'ArgumentList={";".join(arguments.keys())}')
-		for argument, value in arguments.items():
-			writer.WriteLine( f'{argument}={value}' )
-		writer.Close()
+			# Create plugin info file.
+			plugin_info_filename = Path.Combine( GetDeadlineTempPath(), 'husk_plugin_info.job' )
+			writer = StreamWriter( plugin_info_filename, False, Encoding.Unicode )
+			arguments['--usd-input'] = usd_file_path
+			writer.WriteLine( f'ArgumentList={";".join(arguments.keys())}')
+			for argument, value in arguments.items():
+				writer.WriteLine( f'{argument}={value}' )
+			writer.Close()
 
-		# Setup the command line arguments.
-		job_arguments = StringCollection()
-		job_arguments.Add( job_info_filename )
-		job_arguments.Add( plugin_info_filename )
+			# Setup the command line arguments.
+			job_arguments = StringCollection()
+			job_arguments.Add( job_info_filename )
+			job_arguments.Add( plugin_info_filename )
 
+			# Progress in titlebar
+			dialog.SetTitle(f'{WINDOW_TITLE} - Submitting Job {job_index + 1}')
 
-		# Progress in titlebar
-		dialog.SetTitle(f'{WINDOW_TITLE} - Submitting Job {job_index + 1}')
-
-		# Now submit the job.
-		result = ClientUtils.ExecuteCommandAndGetOutput( job_arguments )
-		results['success' if 'Result=Success' in result else 'fail'][job_name] = result
+			# Now submit the job.
+			result = ClientUtils.ExecuteCommandAndGetOutput( job_arguments )
+			results['success' if 'Result=Success' in result else 'fail'][job_name] = result
 
 	# Display results/errors
 	dialog.SetTitle(f'{WINDOW_TITLE} - Submission Complete')

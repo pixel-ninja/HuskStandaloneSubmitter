@@ -180,10 +180,28 @@ DefaultValue=
 Type=String
 Label=Camera
 
+[override_--output]
+Category=RenderSettingsOverrides
+CategoryOrder=2
+Index=19
+Description=Enables --output Husk option.
+Label=Enable Output/s
+Type=Boolean
+DefaultValue=False
+
+[--output]
+Category=RenderSettingsOverrides
+CategoryOrder=2
+Index=20
+Description=
+DefaultValue=
+Type=String
+Label=Output/s
+
 [override_--headlight]
 Category=USD
 CategoryOrder=3
-Index=19
+Index=21
 Description=Enables --headlight Husk option.
 Label=Enable Headlight
 Type=Boolean
@@ -192,7 +210,7 @@ DefaultValue=True
 [--headlight]
 Category=USD
 CategoryOrder=3
-Index=20
+Index=22
 Description=
 Values=None;Distant;Dome
 DefaultValue=None
@@ -202,7 +220,7 @@ Label=Headlight
 [--disable-scene-materials]
 Category=USD
 CategoryOrder=3
-Index=21
+Index=23
 Description=
 DefaultValue=False
 Type=Boolean
@@ -211,7 +229,7 @@ Label=Disable Scene Materials
 [--disable-scene-lights]
 Category=USD
 CategoryOrder=3
-Index=22
+Index=24
 Description=
 DefaultValue=False
 Type=Boolean
@@ -220,7 +238,7 @@ Label=Disable Scene Lights
 [--disable-motionblur]
 Category=USD
 CategoryOrder=3
-Index=23
+Index=25
 Description=
 DefaultValue=False
 Type=Boolean

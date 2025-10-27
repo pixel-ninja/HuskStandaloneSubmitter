@@ -80,7 +80,7 @@ class HuskStandalone(DeadlinePlugin):
 				argument += ' --autotile'
 
 			value = self.GetPluginInfoEntry(arg_name)
-			if value == 'False':
+			if value == 'False' or value == '':
 				continue
 			elif value == 'True':
 				argument += f' {arg_name}'
