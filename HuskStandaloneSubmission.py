@@ -120,6 +120,90 @@ CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed gro
 }
 
 
+def generate_options_file() -> None:
+	'''
+	Generate the HuskStandalone.options file in the repo plugin directory.
+	The options are generated based on the parameters specified
+	in the CONTROLS variable. 
+	'''
+	plugin_directory = RepositoryUtils.GetPluginDirectory('HuskStandalone')
+	options_path = Path.Combine( plugin_directory, 'HuskStandalone.options' )
+	writer = StreamWriter( options_path, False, Encoding.Unicode )
+
+	index = 0
+	for category_index, (group, controls) in enumerate(CONTROLS.items()):
+		category = group.rstrip('_+-')
+		for control_row in controls:
+			for control in control_row:
+				names = []
+
+				if control.name == 'file_paths_control':
+					names = ['--usd-input']
+				elif not control.name.startswith('--'):
+					continue
+				else:
+					if control.override is not None:
+						names.append(f'override_{control.name}')
+					names.append(control.name)
+
+				for name in names:
+					writer.WriteLine( f'[{name}]' )
+
+					writer.WriteLine( f'Category={category}' )
+					writer.WriteLine( f'CategoryOrder={category_index}' )
+					writer.WriteLine( f'Index={index}' )
+
+					if name.startswith('override_'):
+						writer.WriteLine( f'Description=Enables {name.lstrip("override_")} Husk option.' )
+						writer.WriteLine( f'Label=Enable {control.label}' )
+						writer.WriteLine( 'Type=Boolean' )
+						writer.WriteLine( f'DefaultValue={control.override}' )
+						writer.WriteLine( '' )
+						index += 1
+						continue
+
+					writer.WriteLine( f'Description={control.tooltip}' )
+
+					label = control.label
+					default = control.value[0]
+					option_type = 'String'
+
+					if name == '--usd-input':
+						option_type = 'Filename'
+						writer.WriteLine( f'Filter={control.value[1]}' )
+
+					match control.type:
+						case ControlType.checkbox:
+							option_type = 'Boolean'
+							label = control.value[1]
+						case ControlType.range:
+							decimal_places = control.value[3]
+							if decimal_places == 0:
+								option_type = 'Integer'
+							else:
+								option_type = 'Float'
+								writer.WriteLine( f'DecimalPlaces={decimal_places}' )
+							writer.WriteLine( f'Minimum={control.value[1]}' )
+							writer.WriteLine( f'Maximum={control.value[2]}' )
+							writer.WriteLine( f'Increment={control.value[4]}' )
+						case ControlType.range2:
+							default = f'{control.value[0][1][0]} {control.value[1][1][0]}'
+						case ControlType.combo:
+							option_type = 'Enum'
+							default = control.value[1][0]
+							writer.WriteLine( f'Values={";".join(control.value[1])}' )
+
+					writer.WriteLine( f'DefaultValue={default}' )
+					writer.WriteLine( f'Type={option_type}' )
+					writer.WriteLine( f'Label={label}' )
+					writer.WriteLine( '' )
+					index += 1
+
+	writer.Close()
+
+
+
+
 def get_usd_metadata(path: str) -> dict[str, str]:
 	'''
 	Return the layer metadata of a usd file as a dictionary via usdcat.
@@ -300,8 +384,6 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 					arguments[override_name] = dialog.GetValue(override_name)
 
 				if control.type is ControlType.range2:
-					if control.name == '--tile-count':
-						arguments['--autotile'] = True
 					value0 = dialog.GetValue(f'{control.name}_0')
 					value1 = dialog.GetValue(f'{control.name}_1')
 					arguments[control.name] = f'{value0} {value1}'
@@ -404,7 +486,7 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 		dialog.AddGrid()
 
 		for control_row in control_rows:
-			for _, control in enumerate(control_row):
+			for control in control_row:
 				if control.pre_space:
 					dialog.AddHorizontalSpacerToGrid('', row, column)
 					column += 1
@@ -483,6 +565,9 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 
 
 def __main__(*args):
+	if '--generate-options' in args:
+		generate_options_file()
+
 	modal = '--modal' in args  # Allows submission from terminal without window auto closing
 
 	# filter out non-paths from args

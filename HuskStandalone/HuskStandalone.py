@@ -77,9 +77,11 @@ class HuskStandalone(DeadlinePlugin):
 			if arg_name.startswith('override'):
 				continue
 			
-			print(f'override_{arg_name}', self.GetBooleanPluginInfoEntryWithDefault(f'override_{arg_name}', True))
 			if not self.GetBooleanPluginInfoEntryWithDefault(f'override_{arg_name}', True):
 				continue
+
+			if arg_name == '--tile-count':
+				argument += ' --autotile'
 
 			value = self.GetPluginInfoEntry(arg_name)
 			if value == 'False':
