@@ -102,7 +102,7 @@ CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed gro
 		[Control('--settings', 'Settings Prim/s', ControlType.text, [''], override=False)],
 		[Control('--slap-comp', 'Slap Comp', ControlType.text, [''], override=False)],
 		[Control('--tile-count', 'Auto Tile', ControlType.range2, [('x', [4, 1, 65535, 0, 1]), ('y', [4, 1, 65535, 0, 1])], override=False)],
-		[Control('--verbose', 'Logging Verbosity', ControlType.range, [0, 0, 9, 0, 1], override=False)],
+		[Control('--verbose', 'Logging Verbosity', ControlType.range, [0, 0, 9, 0, 1])],
 	],
 
 	'RenderSettingsOverrides-': [
