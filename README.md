@@ -1,6 +1,8 @@
 # Husk Standalone Submitter
 A custom Deadline plugin and submitter script for to allow direct submission of USD files to Husk for rendering.
 
+Created by [Matt Tillman - Pixel Ninja](https://pixelninja.design/)
+
 ## Features:
 - Submit multiple USD files
 - Set frame range from stage
@@ -82,6 +84,10 @@ The submission UI can be rearranged by reordering the rows of the CONTROLS varia
 To have changes reflected in the plugin options (i.e. when changing settings in the monitor after submission) regenerate the options file thusly:
 
 `deadlinecommand ExecuteScript <path/to/HuskStandaloneSubmission.py> --generate-options`
+
+## Changelog
+### [2.0.0] - 2025-10-28
+Major rewrite
 
 ## Thanks
 Originally forked from and David Tree's Husk Submitter
