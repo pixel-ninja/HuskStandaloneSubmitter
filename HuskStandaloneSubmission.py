@@ -19,6 +19,7 @@ class ControlType(Enum):
 	label = 'LabelControl'
 	text = 'TextControl'
 	multifile = 'MultiFileBrowserControl'
+	filesaver = 'FileSaverControl'
 	checkbox = 'CheckBoxControl'
 	range = 'RangeControl'
 	range2 = 'RangeControl2'
@@ -138,7 +139,7 @@ CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed gro
 		[Control('--res', 'Resolution', ControlType.range2, [('x', [1920, 0, 65535, 0, 1]), ('y', [1080, 0, 65535, 0, 1])], override=False)],
 		[Control('--res-scale', 'Resolution Scale', ControlType.range, [100, 0, 5000, 0, 1], override=False)],
 		[Control('--camera', 'Camera', ControlType.text, [''], override=False)],
-		[Control('--output', 'Output/s', ControlType.text, [''], override=False)],
+		[Control('--output', 'Output/s', ControlType.filesaver, ['', ''], override=False)],
 	],
 
 	'USD-': [
@@ -456,9 +457,8 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 
 		outputs = determine_outputs(
 				render_info,
-				dialog.GetValue('--pass'),  #TODO: Empty string if override is false
-				dialog.GetValue('--settings'),  #TODO: Empty string if override is false
-				dialog.GetValue('--output')  #TODO: Empty string if override is false
+				*(dialog.GetValue(x) if dialog.GetValue(f'override_{x}') else ''
+				for x in ('--pass', '--settings', '--output'))
 			)
 
 		for pass_prim, (settings_prims, productnames) in outputs.items():
@@ -550,12 +550,13 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 					'expand': control.type not in [ControlType.button, ControlType.checkbox],
 					'colSpan': MAX_COLUMNS - column,
 				}
+
+				if control.type in [ControlType.multifile, ControlType.filesaver]:
+					control_kwargs['browserLocation'] = load_browser_location()
 				
 				control_items = []
 				match control.type:
-					case ControlType.multifile | ControlType.checkbox:
-						if control.type is ControlType.multifile:
-							control_kwargs['browserLocation'] = load_browser_location()
+					case ControlType.multifile | ControlType.filesaver | ControlType.checkbox:
 						control_items.append(dialog.AddSelectionControlToGrid(*control_args, **control_kwargs))
 					case ControlType.range:
 						control_items.append(dialog.AddRangeControlToGrid(*control_args, **control_kwargs))
