@@ -101,10 +101,11 @@ def files_selected(dialog: DeadlineScriptDialog):
 	file_paths = file_paths_string.split(';')
 	save_browser_location(os.path.dirname(file_paths[0]))
 
-	# No need for batch name when submitting single file
-	if len(file_paths) == 1:
-		dialog.SetValue('batch_control', '')
-		return
+	# Uncomment to stop auto batching on single files
+	# Means that multiple passes won't be batched by default
+	# if len(file_paths) == 1:
+	# 	dialog.SetValue('batch_control', '')
+	# 	return
 	
 	common_prefix = os.path.commonprefix(file_paths)
 	batch_name = os.path.basename(os.path.splitext(common_prefix)[0])
