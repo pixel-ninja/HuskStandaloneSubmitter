@@ -119,35 +119,180 @@ WINDOW_TITLE = 'Deadline Husk Submitter'
 MAX_COLUMNS = 6
 CONTROLS = {  # End key with _,+ or - for group, expanded group or collapsed group
 	'Submission_': [
-		[Control('file_paths_control', 'USD File/s', ControlType.multifile, ['', 'USD Files (*.usd);;USDA Files (*.usda);;USDC Files(*.usdc);;USDZ Files(*.usdz)'], callback=files_selected)],
-		[Control('batch_control', 'Batch Name', ControlType.text, [''])],
-		[Control('comment_control', 'Comment', ControlType.text, [''])],
-		[Control('chunk_control', 'Frames Per Task', ControlType.range, [5, 1, 1000, 0, 1])],
-		[Control('framerange_control', 'Frame Range', ControlType.range2, [('Start', [1001, -65535, 65535, 0, 1]), ('End', [1250, -65535, 65535, 0, 1])], override=False)],
+		[Control(
+			name = 'file_paths_control',
+			label = 'USD File/s',
+			type = ControlType.multifile,
+			value = ['', 'USD Files (*.usd);;USDA Files (*.usda);;USDC Files(*.usdc);;USDZ Files(*.usdz)'],
+			tooltip = "Select USD files to submit to Husk.\nSemicolon (;) separated list.",
+			callback=files_selected)],
+		[Control(
+			name = 'batch_control',
+			label = 'Batch Name',
+			type = ControlType.text,
+			value = [''],
+			tooltip = (
+				"Name used to group render jobs together in the Monitor.\n"
+				"Ignored if blank.\n"
+				"Defaults to the shortest filename prefix of input files."))],
+		[Control(
+			name = 'comment_control',
+			label = 'Comment',
+			type = ControlType.text,
+			value = [''],
+			tooltip = "A comment for the job to display in the Monitor")],
+		[Control(
+			name = 'chunk_control',
+			label = 'Frames Per Task',
+			type = ControlType.range,
+			value = [5, 1, 1000, 0, 1],
+			tooltip = "Specify how many frames to render per task.")],
+		[Control(
+			name = 'framerange_control',
+			label = 'Frame Range',
+			type = ControlType.range2,
+			value = [('Start', [1001, -65535, 65535, 0, 1]), ('End', [1250, -65535, 65535, 0, 1])],
+			override=False,
+			tooltip = (
+				"Enable to explicitly set the frame range to render.\n"
+				"Otherwise use the authored startTimeCode and endTimecode."))],
 	],
 
 	'Rendering-': [
-		[Control('--renderer', 'Renderer', ControlType.combo, ['', ['BRAY_HdKarmaXPU', 'BRAY_HdKarma']])],
-		[Control('--pixel-samples', 'Pixel Samples', ControlType.range, [128, 1, 65535, 0, 1], override=False)],
-		[Control('--pass', 'Pass Prim/s', ControlType.text, [''], override=False)],
-		[Control('--settings', 'Settings Prim/s', ControlType.text, [''], override=False)],
-		[Control('--slap-comp', 'Slap Comp', ControlType.text, [''], override=False)],
-		[Control('--tile-count', 'Auto Tile', ControlType.range2, [('x', [4, 1, 65535, 0, 1]), ('y', [4, 1, 65535, 0, 1])], override=False)],
-		[Control('--verbose', 'Logging Verbosity', ControlType.range, [0, 0, 9, 0, 1])],
+		[Control(
+			name = '--renderer',
+			label = 'Renderer',
+			type = ControlType.combo,
+			value = ['', ['BRAY_HdKarmaXPU', 'BRAY_HdKarma']],
+			tooltip = "Specify Hydra client.")],
+		[Control(
+			name = '--pixel-samples',
+			label = 'Pixel Samples',
+			type = ControlType.range,
+			value = [128, 1, 65535, 0, 1],
+			override=False,
+			tooltip = "Enable to override samples per pixel.")],
+		[Control(
+			name = '--pass',
+			label = 'Pass Prim/s',
+			type = ControlType.text,
+			value = [''],
+			override=False,
+			tooltip = (
+				"Render using the RenderPass prim/s specified.\n"
+				"Multiple render passes can be specified "
+				"using a comma or space separated list and/or pattern matching.\n"
+				"Custom submission implementation to match --settings UX.\n"
+				"Each pass is submitted as a separate render job."))],
+		[Control(
+			name = '--settings',
+			label = 'Settings Prim/s',
+			type = ControlType.text,
+			value = [''],
+			override=False,
+			tooltip = (
+				"Render using the RenderSettings prim/s specified.\n"
+				"Multiple render settings can be specified "
+				"using a comma or space separated list and/or pattern matching.\n"
+				"When disabled or blank defaults to either the RenderPass.renderSource "
+				"(if --pass is set) or the layer's renderSettingsPrimPath metadata."))],
+		[Control(
+			name = '--slap-comp',
+			label = 'Slap Comp',
+			type = ControlType.text,
+			value = [''],
+			override=False,
+			tooltip = (
+				"Path to Apex COP .geo file to run on outputs.\n"
+				"Options encoded using: path_to_graph?option=value&option2=value2."))],
+		[Control(
+			name = '--tile-count',
+			label = 'Auto Tile',
+			type = ControlType.range2,
+			value = [('x', [4, 1, 65535, 0, 1]), ('y', [4, 1, 65535, 0, 1])],
+			override=False,
+			tooltip = (
+			"Enable autotiling, where Husk will render x by y tiles\n"
+			"and stitch them together on completion."))],
+		[Control(
+			name = '--verbose',
+			label = 'Logging Verbosity',
+			type = ControlType.range,
+			value = [0, 0, 9, 0, 1],
+			tooltip = (
+				"Verbosity of rendering statistics.\n"
+				"Note that verbose levels of 8 and greater may affect "
+				"rendering performance and should only be used for debugging problem scenes."))],
 	],
 
 	'RenderSettingsOverrides-': [
-		[Control('--res', 'Resolution', ControlType.range2, [('x', [1920, 0, 65535, 0, 1]), ('y', [1080, 0, 65535, 0, 1])], override=False)],
-		[Control('--res-scale', 'Resolution Scale', ControlType.range, [100, 0, 5000, 0, 1], override=False)],
-		[Control('--camera', 'Camera', ControlType.text, [''], override=False)],
-		[Control('--output', 'Output/s', ControlType.filesaver, ['', ''], override=False)],
+		[Control(
+			name = '--res',
+			label = 'Resolution',
+			type = ControlType.range2,
+			value = [('x', [1920, 0, 65535, 0, 1]), ('y', [1080, 0, 65535, 0, 1])],
+			override=False,
+			tooltip = "Rendered image width and height, in pixels.")],
+		[Control(
+			name = '--res-scale',
+			label = 'Resolution Scale',
+			type = ControlType.range,
+			value = [100, 0, 5000, 0, 1],
+			override=False,
+			tooltip = "Scale the output image by the given percentage.")],
+		[Control(
+			name = '--camera',
+			label = 'Camera',
+			type = ControlType.text,
+			value = [''],
+			override=False,
+			tooltip = "The primitive path of the camera to render from.")],
+		[Control(
+			name = '--output',
+			label = 'Output/s',
+			type = ControlType.filesaver,
+			value = ['', ''],
+			override=False,
+			tooltip = (
+				"Comma separated list of output image file paths.\n"
+				"These can contain certain local variables:\n"
+				"eg. $F/<F>/%d, $F4/<F4>/%04d, $FF/<FF>/%g"))],
 	],
 
 	'USD-': [
-			[Control('--headlight', 'Headlight', ControlType.combo, ['', ['None', 'Distant', 'Dome']], override=True)],
-			[Control('--disable-scene-materials', '', ControlType.checkbox, [False, 'Disable Scene Materials'])],
-			[Control('--disable-scene-lights', '', ControlType.checkbox, [False, 'Disable Scene Lights'])],
-			[Control('--disable-motionblur', '', ControlType.checkbox, [False, 'Disable Motion Blur'])],
+		[Control(
+			name = '--headlight',
+			label = 'Headlight',
+			type = ControlType.combo,
+			value = ['', ['None', 'Distant', 'Dome']],
+			override=True,
+			tooltip = (
+				"When there are no lights found on the stage,\n"
+				"this controls the headlight mode."))],
+		[Control(
+			name = '--disable-scene-materials',
+			label = '',
+			type = ControlType.checkbox,
+			value = [False, 'Disable Scene Materials'],
+			tooltip = (
+				"Disable all materials in the scene.\n"
+				"This option applies to all render delegates."))],
+		[Control(
+			name = '--disable-scene-lights',
+			label = '',
+			type = ControlType.checkbox,
+			value = [False, 'Disable Scene Lights'],
+			tooltip = (
+				"Disable all lights in the scene.\n"
+				"This option applies to all render delegates."))],
+		[Control(
+			name = '--disable-motionblur',
+			label = '',
+			type = ControlType.checkbox,
+			value = [False, 'Disable Motion Blur'],
+			tooltip = (
+				"Disable all lights in the scene.\n"
+				"This option applies to all render delegates."))],
 	],
 }
 

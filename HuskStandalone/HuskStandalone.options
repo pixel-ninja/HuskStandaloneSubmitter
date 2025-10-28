@@ -2,7 +2,8 @@
 Category=Submission
 CategoryOrder=0
 Index=0
-Description=
+Description=Select USD files to submit to Husk.
+Semicolon (;) separated list.
 Filter=USD Files (*.usd);;USDA Files (*.usda);;USDC Files(*.usdc);;USDZ Files(*.usdz)
 DefaultValue=
 Type=Filename
@@ -12,7 +13,7 @@ Label=USD File/s
 Category=Rendering
 CategoryOrder=1
 Index=1
-Description=
+Description=Specify Hydra client.
 Values=BRAY_HdKarmaXPU;BRAY_HdKarma
 DefaultValue=BRAY_HdKarmaXPU
 Type=Enum
@@ -31,7 +32,7 @@ DefaultValue=False
 Category=Rendering
 CategoryOrder=1
 Index=3
-Description=
+Description=Enable to override samples per pixel.
 Minimum=1
 Maximum=65535
 Increment=1
@@ -52,7 +53,10 @@ DefaultValue=False
 Category=Rendering
 CategoryOrder=1
 Index=5
-Description=
+Description=Render using the RenderPass prim/s specified.
+Multiple render passes can be specified using a comma or space separated list and/or pattern matching.
+Custom submission implementation to match --settings UX.
+Each pass is submitted as a separate render job.
 DefaultValue=
 Type=String
 Label=Pass Prim/s
@@ -70,7 +74,9 @@ DefaultValue=False
 Category=Rendering
 CategoryOrder=1
 Index=7
-Description=
+Description=Render using the RenderSettings prim/s specified.
+Multiple render settings can be specified using a comma or space separated list and/or pattern matching.
+When disabled or blank defaults to either the RenderPass.renderSource (if --pass is set) or the layer's renderSettingsPrimPath metadata.
 DefaultValue=
 Type=String
 Label=Settings Prim/s
@@ -88,7 +94,8 @@ DefaultValue=False
 Category=Rendering
 CategoryOrder=1
 Index=9
-Description=
+Description=Path to Apex COP .geo file to run on outputs.
+Options encoded using: path_to_graph?option=value&option2=value2.
 DefaultValue=
 Type=String
 Label=Slap Comp
@@ -106,7 +113,8 @@ DefaultValue=False
 Category=Rendering
 CategoryOrder=1
 Index=11
-Description=
+Description=Enable autotiling, where Husk will render x by y tiles
+and stitch them together on completion.
 DefaultValue=4 4
 Type=String
 Label=Auto Tile
@@ -115,7 +123,8 @@ Label=Auto Tile
 Category=Rendering
 CategoryOrder=1
 Index=12
-Description=
+Description=Verbosity of rendering statistics.
+Note that verbose levels of 8 and greater may affect rendering performance and should only be used for debugging problem scenes.
 Minimum=0
 Maximum=9
 Increment=1
@@ -136,7 +145,7 @@ DefaultValue=False
 Category=RenderSettingsOverrides
 CategoryOrder=2
 Index=14
-Description=
+Description=Rendered image width and height, in pixels.
 DefaultValue=1920 1080
 Type=String
 Label=Resolution
@@ -154,7 +163,7 @@ DefaultValue=False
 Category=RenderSettingsOverrides
 CategoryOrder=2
 Index=16
-Description=
+Description=Scale the output image by the given percentage.
 Minimum=0
 Maximum=5000
 Increment=1
@@ -175,7 +184,7 @@ DefaultValue=False
 Category=RenderSettingsOverrides
 CategoryOrder=2
 Index=18
-Description=
+Description=The primitive path of the camera to render from.
 DefaultValue=
 Type=String
 Label=Camera
@@ -193,7 +202,9 @@ DefaultValue=False
 Category=RenderSettingsOverrides
 CategoryOrder=2
 Index=20
-Description=
+Description=Comma separated list of output image file paths.
+These can contain certain local variables:
+eg. $F/<F>/%d, $F4/<F4>/%04d, $FF/<FF>/%g
 Filter=
 DefaultValue=
 Type=FilenameSave
@@ -212,7 +223,8 @@ DefaultValue=True
 Category=USD
 CategoryOrder=3
 Index=22
-Description=
+Description=When there are no lights found on the stage,
+this controls the headlight mode.
 Values=None;Distant;Dome
 DefaultValue=None
 Type=Enum
@@ -222,7 +234,8 @@ Label=Headlight
 Category=USD
 CategoryOrder=3
 Index=23
-Description=
+Description=Disable all materials in the scene.
+This option applies to all render delegates.
 DefaultValue=False
 Type=Boolean
 Label=Disable Scene Materials
@@ -231,7 +244,8 @@ Label=Disable Scene Materials
 Category=USD
 CategoryOrder=3
 Index=24
-Description=
+Description=Disable all lights in the scene.
+This option applies to all render delegates.
 DefaultValue=False
 Type=Boolean
 Label=Disable Scene Lights
@@ -240,7 +254,8 @@ Label=Disable Scene Lights
 Category=USD
 CategoryOrder=3
 Index=25
-Description=
+Description=Disable all lights in the scene.
+This option applies to all render delegates.
 DefaultValue=False
 Type=Boolean
 Label=Disable Motion Blur
