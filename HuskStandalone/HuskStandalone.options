@@ -194,8 +194,9 @@ Category=RenderSettingsOverrides
 CategoryOrder=2
 Index=20
 Description=
+Filter=
 DefaultValue=
-Type=String
+Type=FilenameSave
 Label=Output/s
 
 [override_--headlight]

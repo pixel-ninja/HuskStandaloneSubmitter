@@ -202,6 +202,9 @@ def generate_options_file() -> None:
 					if name == '--usd-input':
 						option_type = 'Filename'
 						writer.WriteLine( f'Filter={control.value[1]}' )
+					elif name == '--output':
+						option_type = 'FilenameSave'
+						writer.WriteLine( f'Filter={control.value[1]}' )
 
 					match control.type:
 						case ControlType.checkbox:
@@ -516,7 +519,7 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 			pass_arguments['override_--settings'] = True
 			pass_arguments['--settings'] = ','.join(settings_prims)
 			pass_arguments['override_--output'] = True
-			pass_arguments['--output'] = ','.join([f'"{x}"' for x in productnames])
+			pass_arguments['--output'] = ','.join(productnames)
 
 			job_name_suffix = ''
 			if pass_prim != '':

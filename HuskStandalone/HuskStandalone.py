@@ -80,6 +80,15 @@ class HuskStandalone(DeadlinePlugin):
 				argument += ' --autotile'
 
 			value = self.GetPluginInfoEntry(arg_name)
+
+			# Map output paths
+			if arg_name == '--output':
+				output_paths = value.split(',')
+				if not output_paths:
+					continue
+
+				value = ','.join(['"' + RepositoryUtils.CheckPathMapping(x).replace( '\\', '/' ) + '"' for x in output_paths])
+
 			if value == 'False' or value == '':
 				continue
 			elif value == 'True':
