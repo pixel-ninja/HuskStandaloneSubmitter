@@ -4,7 +4,7 @@ import re
 from enum import Enum
 from functools import partial
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Callable, Optional, Literal
 
 from Deadline.Scripting import ClientUtils, RepositoryUtils, FileUtils, FrameUtils
 from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
@@ -372,6 +372,29 @@ def format_results_message(results: dict[str, dict[str, str]]) -> str:
 	return result_output
 
 
+def parse_prim_pattern(
+	patterns: str, render_info: RenderInfo,
+	prim_type: Literal['RenderPass', 'RenderSettings']) -> list[str]:
+	'''
+	Takes string representing a comma or space separated list of primpaths
+	with patterns and returns a list of matching primpaths.
+
+	Examples:
+	RenderPass: '*' -> matches all RenderPass Prims in render_info
+	RenderSettings: '*' -> matches all RenderSettings Prims in render_info
+	RenderSettings: 'preview1,final*' -> matches RenderSettings named 'preview1'
+					along with any beginning with 'final'
+	'''
+	result = []
+	valid_paths = getattr(render_info, prim_type)
+
+	for pattern in re.split(r'[,\s]+', patterns):
+		regex = re.compile(pattern.replace('*', '.*'))
+		result.extend(list(filter(regex.search, valid_paths)))
+
+	return result
+
+
 def determine_outputs(render_info: RenderInfo, pass_value: str, settings_value: str, output_value: str) -> dict[str, tuple[list[str], list[str]]]:
 	'''
 	Determines the appropriate values for settings and output for each pass
@@ -380,23 +403,47 @@ def determine_outputs(render_info: RenderInfo, pass_value: str, settings_value: 
 	Render Pass drives Render Settings (via RenderSource attribute)
 	Render Settings drives Render Product
 	Render Product drives output/ProductNames
+
+	Outputs a dictionary with passes as keys
+	and a tuple of lists of settings and productnames as values.
+	eg. {'pass1': ([settings1, settings2], [productname1, productname2])}
 	'''
 	result = {}
-	settings_prims = []  #TODO: proper pattern matching of rendersettings value
-	productnames = []
+	pass_prims = parse_prim_pattern(pass_value, render_info, 'RenderPass') if pass_value else []
+	settings_prims = parse_prim_pattern(settings_value, render_info, 'RenderSettings') if settings_value else []
+	productnames = [x.strip() for x in output_value.split(',')] if output_value else []
 
-	# Get default productname #TODO: Proper handling of productname based on RenderPass/Settings/Products
-	if render_info.renderSettingsPrimPath in render_info.RenderSettings:
-		settings_prims.append(render_info.renderSettingsPrimPath)
+	if not pass_prims:
+		pass_prims.append('')
 
-	for render_settings_prim in settings_prims:
-		if render_settings_prim in render_info.relationships:
-			for render_product_prim in render_info.relationships[render_settings_prim]:
-				productname = render_info.relationships[render_product_prim][-1]
-				# Check element is a productname and not a RenderVar
-				if productname in render_info.ProductName:
-					productnames.append(productname)
-	return {'': (settings_prims, productnames)}  #TODO: Handle this properly
+	for pass_prim in pass_prims:
+		# First determine render settings
+		if pass_prim == '':
+			pass_settings = [render_info.renderSettingsPrimPath]
+		else:
+			pass_settings = render_info.relationships[pass_prim]
+
+		# Use override render settings if supplied
+		if settings_prims:
+			pass_settings = settings_prims
+
+		# Next determine associated productnames
+		# Use override productnames if supplied
+		if productnames:
+			result[pass_prim] = (pass_settings, productnames)
+			continue
+
+		# Get product names from products from settings
+		pass_productnames = []
+		for pass_setting in pass_settings:
+			for pass_setting_product in render_info.relationships[pass_setting]:
+				for pass_setting_productname in render_info.relationships[pass_setting_product]:
+					if pass_setting_productname in render_info.ProductName:
+						pass_productnames.append(pass_setting_productname)
+
+		result[pass_prim] = (pass_settings, pass_productnames)
+
+	return result
 
 
 def submit_pressed(dialog: DeadlineScriptDialog) -> None:
@@ -460,8 +507,17 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 				*(dialog.GetValue(x) if dialog.GetValue(f'override_{x}') else ''
 				for x in ('--pass', '--settings', '--output'))
 			)
-
+		
 		for pass_prim, (settings_prims, productnames) in outputs.items():
+			pass_arguments = arguments.copy()
+			if pass_prim == '':
+				pass_arguments['override_--pass'] = False
+			pass_arguments['--pass'] = pass_prim
+			pass_arguments['override_--settings'] = True
+			pass_arguments['--settings'] = ','.join(settings_prims)
+			pass_arguments['override_--output'] = True
+			pass_arguments['--output'] = ','.join([f'"{x}"' for x in productnames])
+
 			job_name_suffix = ''
 			if pass_prim != '':
 				job_name_suffix = '_' + os.path.basename(pass_prim)
@@ -483,9 +539,9 @@ def submit_pressed(dialog: DeadlineScriptDialog) -> None:
 			# Create plugin info file.
 			plugin_info_filename = Path.Combine( GetDeadlineTempPath(), 'husk_plugin_info.job' )
 			writer = StreamWriter( plugin_info_filename, False, Encoding.Unicode )
-			arguments['--usd-input'] = usd_file_path
-			writer.WriteLine( f'ArgumentList={";".join(arguments.keys())}')
-			for argument, value in arguments.items():
+			pass_arguments['--usd-input'] = usd_file_path
+			writer.WriteLine( f'ArgumentList={";".join(pass_arguments.keys())}')
+			for argument, value in pass_arguments.items():
 				writer.WriteLine( f'{argument}={value}' )
 			writer.Close()
 
