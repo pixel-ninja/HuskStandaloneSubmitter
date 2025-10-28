@@ -828,5 +828,12 @@ def __main__(*args):
 	file_paths = [x for x in args if os.path.exists(x)]
 
 	dialog = submission_dialog(*file_paths)
+
+	# Quick and dirty way to stop the dialog being garbage collected
+	# when opened from the Monitor
+	if not modal:
+		global script_dialog
+		script_dialog = dialog
+
 	dialog.ShowDialog(modal=modal)
 
