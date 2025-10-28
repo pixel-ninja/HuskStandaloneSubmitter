@@ -393,7 +393,10 @@ def parse_prim_pattern(
 	valid_paths = getattr(render_info, prim_type)
 
 	for pattern in re.split(r'[,\s]+', patterns):
-		regex = re.compile(pattern.replace('*', '.*'))
+		regex_string = pattern.replace('*', '.*')
+		if not regex_string.startswith('/'):
+			regex_string = '/' + regex_string
+		regex = re.compile(regex_string)
 		result.extend(list(filter(regex.search, valid_paths)))
 
 	return result
