@@ -8,6 +8,7 @@ from typing import Callable, Optional
 
 from Deadline.Scripting import ClientUtils, RepositoryUtils, FileUtils, FrameUtils
 from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
+from ThinkboxUI.Controls.CollapsibleGroupBox import CollapsibleGroupBox
 from System import Array
 from System.Text import Encoding
 from System.IO import Path, StreamWriter
@@ -500,7 +501,10 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 		in_group = False
 		is_collapsed = False
 		if group[-1] in '_+-':
-			dialog.AddGroupBox('', group.rstrip('_+-'), collapsible=group[-1]!='_')
+			collapsible = group[-1]!='_'
+			group_box = dialog.AddGroupBox('', group.rstrip('_+-'), collapsible=collapsible)
+			if collapsible:
+				group_box.clicked.connect(lambda: dialog.setFixedHeight(dialog.sizeHint().height()))
 			in_group = True
 			is_collapsed = group[-1] == '-'
 
@@ -578,6 +582,8 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 	closeButton = dialog.AddControlToGrid('CloseButton', 'ButtonControl', 'Close', 0, 2, expand=False)
 	closeButton.ValueModified.connect(dialog.closeEvent)
 	dialog.EndGrid()
+
+	dialog.setFixedHeight(dialog.sizeHint().height())
 
 	toggle_enabled(dialog)
 	files_selected(dialog)
