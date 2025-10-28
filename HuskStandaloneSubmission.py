@@ -396,7 +396,7 @@ def get_render_info(path: str) -> RenderInfo:
 	accum_path:str = ''
 	accum_depth:int = -1
 
-	usdcat = subprocess.check_output([USDCAT, '--flatten', '--mask', '/Render', path], text=True)
+	usdcat = subprocess.check_output([USDCAT, '--flatten', '--mask', '/Render', path], text=True, creationflags=subprocess.CREATE_NO_WINDOW)
 	finished_metadata = False
 	resume = []
 	for line in usdcat.splitlines():
