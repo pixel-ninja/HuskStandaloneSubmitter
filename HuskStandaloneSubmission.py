@@ -72,6 +72,20 @@ def get_usdcat() -> str:
 	return usdcat
 
 
+def save_browser_location(path: str) -> None:
+	txt_path = Path.Combine( GetDeadlineTempPath(), 'husk_browser_location.txt' )
+	with open(txt_path, 'w') as file:
+		file.write(path)
+
+
+def load_browser_location() -> str:
+	txt_path = Path.Combine( GetDeadlineTempPath(), 'husk_browser_location.txt' )
+	if not os.path.exists(txt_path):
+		return ''
+	with open(txt_path, 'r') as file:
+		return file.read()
+
+
 def files_selected(dialog: DeadlineScriptDialog):
 	'''
 	Sets the Batch Name to the shortest common prefix of input files
@@ -84,6 +98,7 @@ def files_selected(dialog: DeadlineScriptDialog):
 		return
 
 	file_paths = file_paths_string.split(';')
+	save_browser_location(os.path.dirname(file_paths[0]))
 
 	# No need for batch name when submitting single file
 	if len(file_paths) == 1:
@@ -539,6 +554,8 @@ def submission_dialog(*args) -> DeadlineScriptDialog:
 				control_items = []
 				match control.type:
 					case ControlType.multifile | ControlType.checkbox:
+						if control.type is ControlType.multifile:
+							control_kwargs['browserLocation'] = load_browser_location()
 						control_items.append(dialog.AddSelectionControlToGrid(*control_args, **control_kwargs))
 					case ControlType.range:
 						control_items.append(dialog.AddRangeControlToGrid(*control_args, **control_kwargs))
