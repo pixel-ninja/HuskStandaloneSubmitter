@@ -1,5 +1,5 @@
 # Husk Standalone Submitter
-A custom Deadline plugin and submitter script for to allow direct submission of USD files to Husk for rendering.
+A custom Deadline plugin and submitter script allowing direct submission of USD files to Husk for rendering.
 
 Created by [Matt Tillman - Pixel Ninja](https://pixelninja.design/)
 
@@ -9,7 +9,7 @@ Created by [Matt Tillman - Pixel Ninja](https://pixelninja.design/)
 - Set renderer (Karma CPU or XPU)
 - GPU affinity (for Karma XPU)
 - Submit render passes (Houdini 21+)
-- Override stage settings during and after submission
+- Override stage render settings during and after submission
 - Path mapping of input and output files (untested)
 - Submission of OutputFileNames to allow for easy checking/exploring from the Monitor
 
@@ -43,7 +43,7 @@ This should be:
 Houdini 18+
 Deadline 10
 
-Certain settings only supported on newer Houdini versions (i.e. --pass is Houdini 21+).
+Certain settings only supported on newer Houdini versions (i.e. --pass is Houdini 21+). Tested on 20.5 and 21.
 
 ## Usage
 ### Deadline Monitor
@@ -60,7 +60,7 @@ You can edit the settings of a running job in the monitor by right clicking on t
 Modify Job Properties > HuskStandalone Settings.
 
 ### Determining Output Files
-There is a bunch of logic that goes into determining the output files; as `--pass`, `--settings` and `--output` all affect them.
+There is a bunch of logic that goes into determining the output files as `--pass`, `--settings` and `--output` all affect what gets rendered.
 
 This is handled in the submission script but not in the plugin script itself so altering any of those options after submission will require manual intervention (i.e. `--pass` will not drive `--settings` and in turn `--settings` will not drive `--output`).
 
@@ -71,7 +71,7 @@ Most of the parameters mirror their husk arguments, with the notable exception o
 
 As mentioned above; `--pass` will also drive `--settings` via the renderSource property.
 
-I've suggested to SideFX that they implement UX this into Husk itself. It could just be me that wants this, but I find it hard to imagine a scenario where I have multiple render passes that don't each have their own corresponding settings/products.
+I've suggested to SideFX that they implement this UX into Husk itself. It could just be me that wants this, but I find it hard to imagine a scenario where I have multiple render passes that don't each have their own corresponding settings/products.
 
 ### USD Parsing
 All of this USD parsing is done via some very hacky regex on usdcat output for the sake of portability and minimising dependencies.
